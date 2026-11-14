@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'supabase' => [
+    'url' => env('SUPABASE_URL'),
+    'publishable_key' => env('SUPABASE_PUBLISHABLE_KEY'),
+    'admin_emails' => array_values(array_filter(array_map('trim', explode(',', env('ADMIN_EMAILS', ''))))),
+],
+
 ];
