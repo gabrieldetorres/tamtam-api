@@ -5,6 +5,12 @@
 /public/storage
 
 .env
+.env
+.env.development
+.env.staging
+.env.production
+.env.backup
+.env.*.backup
 .env.backup
 .env.*.backup
 .phpunit.result.cache

@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -56,8 +57,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/orders/void', [OrderController::class, 'void']);
         Route::get('/orders/{id}', [OrderController::class, 'show']);
 
-        Route::get('/audit-log', [AuditLogController::class, 'index']);
+        Route::get('/reports/summary', [ReportController::class, 'summary']);
+        Route::get('/reports/export', [ReportController::class, 'export']);
 
-        // reports arrive in the next phase.
+        Route::get('/audit-log', [AuditLogController::class, 'index']);
     });
 });
