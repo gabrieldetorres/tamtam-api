@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\CustomerProfileService;
 use App\Services\CustomerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
-    public function __construct(private CustomerService $service) {}
+    public function __construct(
+        private CustomerService $service,
+        private CustomerProfileService $profiles,
+    ) {}
 
     /** GET /api/v1/customers?search=juan */
     public function index(Request $request): JsonResponse
@@ -29,10 +33,16 @@ class CustomerController extends Controller
         return response()->json(['data' => $this->service->create($data)], 201);
     }
 
-    /** GET /api/v1/customers/{id}  (order history and stats arrive with the orders phase) */
+    /** GET /api/v1/customers/{id} */
     public function show(string $id): JsonResponse
     {
         return response()->json(['data' => $this->service->find($id)]);
+    }
+
+    /** GET /api/v1/customers/{id}/profile  (stats, favourites, order history) */
+    public function profile(string $id): JsonResponse
+    {
+        return response()->json(['data' => $this->profiles->profile($id)]);
     }
 
     /** PATCH /api/v1/customers/{id}/archive */

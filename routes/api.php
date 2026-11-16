@@ -4,6 +4,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\IngredientController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -47,10 +48,16 @@ Route::prefix('v1')->group(function () {
         Route::get('/customers', [CustomerController::class, 'index']);
         Route::post('/customers', [CustomerController::class, 'store']);
         Route::get('/customers/{id}', [CustomerController::class, 'show']);
+        Route::get('/customers/{id}/profile', [CustomerController::class, 'profile']);
         Route::patch('/customers/{id}/archive', [CustomerController::class, 'archive']);
+
+        Route::get('/orders', [OrderController::class, 'index']);
+        Route::post('/orders', [OrderController::class, 'store']);
+        Route::post('/orders/void', [OrderController::class, 'void']);
+        Route::get('/orders/{id}', [OrderController::class, 'show']);
 
         Route::get('/audit-log', [AuditLogController::class, 'index']);
 
-        // orders and reports arrive in the next phases.
+        // reports arrive in the next phase.
     });
 });

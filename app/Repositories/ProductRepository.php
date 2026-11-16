@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as BaseCollection;
 
 class ProductRepository
 {
@@ -16,6 +17,16 @@ class ProductRepository
     public function findActive(string $id): Product
     {
         return Product::with('ingredient')->where('archived', false)->findOrFail($id);
+    }
+
+    /** Active drinks for the given ids, keyed by id (used when placing an order). */
+    public function activeByIds(array $ids): BaseCollection
+    {
+        return Product::query()
+            ->where('archived', false)
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
     }
 
     public function nameSizeTaken(string $name, string $size, ?string $exceptId = null): bool
