@@ -26,6 +26,9 @@ RUN composer dump-autoload --optimize --no-dev \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs \
     && chown -R www-data:www-data storage bootstrap/cache
 
+# Tell Render which port the app uses (the base php image declares 80; we serve on $PORT, default 10000)
+EXPOSE 10000
+
 # Render provides $PORT. Apache must listen on it.
 # On each start: cache config, run pending migrations, then start Apache.
 CMD ["sh", "-c", "sed -i \"s/Listen 80/Listen ${PORT:-10000}/\" /etc/apache2/ports.conf && sed -i \"s/:80>/:${PORT:-10000}>/\" /etc/apache2/sites-available/000-default.conf && php artisan config:cache && php artisan migrate --force && apache2-foreground"]
