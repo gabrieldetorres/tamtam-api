@@ -10,14 +10,16 @@ use App\Repositories\ProductRepository;
 use App\Repositories\StockRepository;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The heart of the POS. The browser only says WHICH drinks and HOW MANY;
+ * The heart of the POS. The browser only says WHICH products and HOW MANY;
  * prices, totals, change and stock are all decided here, in one transaction:
  * either the whole sale is saved (order + items + stock), or nothing is.
+ *
+ * Stock: every ingredient in a product's recipe is used once per serving sold
+ * (1 burger = 1 bread + 1 patty).
  */
 class OrderService
 {
@@ -92,7 +94,7 @@ class OrderService
 
             if (! $product) {
                 throw ValidationException::withMessages([
-                    'items' => 'A drink on this order is no longer on the menu. Refresh the menu and try again.',
+                    'items' => 'A product on this order is no longer on the menu. Refresh the menu and try again.',
                 ]);
             }
 
@@ -106,8 +108,10 @@ class OrderService
                 'qty' => $qty,
             ];
 
-            if ($product->item_id !== null && (float) $product->qty > 0) {
-                $needs[$product->item_id] = ($needs[$product->item_id] ?? 0) + $this->milli($product->qty) * $qty;
+            // every ingredient in the recipe is used once per serving
+            foreach ($product->ingredients as $recipeLine) {
+                $needs[$recipeLine->item_id] = ($needs[$recipeLine->item_id] ?? 0)
+                    + $this->milli($recipeLine->qty) * $qty;
             }
         }
 
@@ -146,7 +150,7 @@ class OrderService
         return $created;
     }
 
-    /** Checks there is enough of every ingredient, then deducts it. */
+    /** Checks there is enough of EVERY ingredient first, then deducts them all. */
     private function useStock(array $needs): void
     {
         if (! $needs) {
@@ -176,7 +180,7 @@ class OrderService
         }
     }
 
-    /** The same drink listed twice becomes one line. */
+    /** The same product listed twice becomes one line. */
     private function mergeLines(array $items): array
     {
         $lines = [];

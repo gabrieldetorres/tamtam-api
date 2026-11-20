@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** A drink on the menu (table: menu). item_id + qty = ingredient used per cup. */
+/** A product on the menu (table: menu). Its recipe is in `ingredients`. */
 class Product extends Model
 {
     use HasUuids;
@@ -15,15 +15,18 @@ class Product extends Model
 
     protected $table = 'menu';
 
-    protected $fillable = ['name', 'size', 'price', 'item_id', 'qty', 'archived'];
+    protected $fillable = ['name', 'size', 'price', 'archived'];
+
+    // old single-ingredient columns (kept in the table for a safe rollback, no longer used)
+    protected $hidden = ['item_id', 'qty'];
 
     protected function casts(): array
     {
-        return ['price' => 'decimal:2', 'qty' => 'decimal:3', 'archived' => 'boolean'];
+        return ['price' => 'decimal:2', 'archived' => 'boolean'];
     }
 
-    public function ingredient(): BelongsTo
+    public function ingredients(): HasMany
     {
-        return $this->belongsTo(Item::class, 'item_id');
+        return $this->hasMany(ProductIngredient::class, 'menu_id');
     }
 }

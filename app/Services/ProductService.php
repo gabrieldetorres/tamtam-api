@@ -24,20 +24,32 @@ class ProductService
         return $this->products->allActive();
     }
 
-    public function create(array $data): Product
+        public function create(array $data): Product
     {
-        $data['size'] ??= '';
-        $data = $this->normalizeIngredient($this->clean($data));
-        $this->assertNameSizeFree($data['name'], $data['size']);
+        return DB::transaction(function () use ($data) {
+            $recipe = $this->checkRecipe($data['ingredients'] ?? []);
+            unset($data['ingredients']);
 
-        return $this->products->create($data);
+            $data['size'] ??= '';
+            $data = $this->clean($data);
+            $this->assertNameSizeFree($data['name'], $data['size']);
+
+            return $this->products->create($data, $recipe);
+        });
     }
 
+    /**
+     * Send only what changes. If "ingredients" is present it REPLACES the whole recipe
+     * (an empty list = no ingredients).
+     */
     public function update(string $id, array $data, string $userId): Product
     {
         return DB::transaction(function () use ($id, $data, $userId) {
             $product = $this->products->findActive($id);
-            $data = $this->normalizeIngredient($this->clean($data), $product);
+
+            $recipe = array_key_exists('ingredients', $data) ? $this->checkRecipe($data['ingredients'] ?? []) : null;
+            unset($data['ingredients']);
+            $data = $this->clean($data);
 
             $this->assertNameSizeFree(
                 $data['name'] ?? $product->name,
@@ -47,12 +59,26 @@ class ProductService
 
             $label = $product->name.' '.$product->size;
             $oldPrice = $product->price;
+            $oldRecipe = $recipe !== null ? $this->recipeText($product) : null;
 
-            $updated = $this->products->update($product, $data);
+            $updated = $this->products->update($product, $data, $recipe);
 
             // Replaces the old log_price() database trigger.
             if (array_key_exists('price', $data) && $updated->price !== $oldPrice) {
                 $this->audit->record('price change', $label.': '.$oldPrice.' to '.$updated->price, $userId);
+            }
+
+            // A recipe decides how much stock every sale uses, so changes are logged too.
+            if ($recipe !== null) {
+                $newRecipe = $this->recipeText($updated);
+
+                if ($newRecipe !== $oldRecipe) {
+                    $this->audit->record(
+                        'recipe change',
+                        $label.' recipe: '.($oldRecipe ?: 'none').' to '.($newRecipe ?: 'none'),
+                        $userId
+                    );
+                }
             }
 
             return $updated;
@@ -81,37 +107,38 @@ class ProductService
     }
 
     /**
-     * A drink either has no ingredient (qty is forced to 0) or an active
-     * ingredient with an amount greater than 0.
+     * A recipe lists each ingredient once, every ingredient must exist and be active,
+     * and every amount must be greater than 0.
+     *
+     * @return array<int, array{item_id: string, qty: mixed}>
      */
-    private function normalizeIngredient(array $data, ?Product $existing = null): array
+    private function checkRecipe(array $recipe): array
     {
-        if (! array_key_exists('item_id', $data) && ! array_key_exists('qty', $data)) {
-            return $data;
+        $ids = array_column($recipe, 'item_id');
+
+        if (count($ids) !== count(array_unique($ids))) {
+            throw ValidationException::withMessages(['ingredients' => 'Each ingredient can be listed only once.']);
         }
 
-        $itemId = array_key_exists('item_id', $data) ? $data['item_id'] : $existing?->item_id;
-        $qty = array_key_exists('qty', $data) ? $data['qty'] : $existing?->qty;
-
-        if ($itemId === null) {
-            $data['item_id'] = null;
-            $data['qty'] = 0;
-
-            return $data;
+        if ($ids && $this->ingredients->activeByIds($ids)->count() !== count($ids)) {
+            throw ValidationException::withMessages(['ingredients' => 'An ingredient in the recipe does not exist or is archived.']);
         }
 
-        if (! $this->ingredients->find($itemId)) {
-            throw ValidationException::withMessages(['item_id' => 'That ingredient does not exist or is archived.']);
+        foreach ($recipe as $line) {
+            if ((float) $line['qty'] <= 0) {
+                throw ValidationException::withMessages(['ingredients' => 'Enter how much of each ingredient one serving uses.']);
+            }
         }
 
-        if ((float) $qty <= 0) {
-            throw ValidationException::withMessages(['qty' => 'Enter how much of the ingredient one cup uses.']);
-        }
+        return array_map(fn ($line) => ['item_id' => $line['item_id'], 'qty' => $line['qty']], $recipe);
+    }
 
-        $data['item_id'] = $itemId;
-        $data['qty'] = $qty;
-
-        return $data;
+    private function recipeText(Product $product): string
+    {
+        return $product->ingredients
+            ->sortBy(fn ($line) => $line->item->item)
+            ->map(fn ($line) => $line->item->item.' '.(float) $line->qty)
+            ->implode(', ');
     }
 
     private function assertNameSizeFree(string $name, string $size, ?string $exceptId = null): void

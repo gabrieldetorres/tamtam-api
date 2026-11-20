@@ -10,19 +10,20 @@ class ProductRepository
 {
     public function allActive(): Collection
     {
-        return Product::with('ingredient')->where('archived', false)->orderBy('name')->get();
+        return Product::with('ingredients.item')->where('archived', false)->orderBy('name')->get();
     }
 
     /** Throws ModelNotFoundException (-> 404) if missing or archived. */
     public function findActive(string $id): Product
     {
-        return Product::with('ingredient')->where('archived', false)->findOrFail($id);
+        return Product::with('ingredients.item')->where('archived', false)->findOrFail($id);
     }
 
-    /** Active drinks for the given ids, keyed by id (used when placing an order). */
+    /** Active products for the given ids, keyed by id, with their recipes (used when placing an order). */
     public function activeByIds(array $ids): BaseCollection
     {
         return Product::query()
+            ->with('ingredients')
             ->where('archived', false)
             ->whereIn('id', $ids)
             ->get()
@@ -39,27 +40,39 @@ class ProductRepository
             ->exists();
     }
 
-    /** Names of active drinks that use this ingredient. */
+    /** Names of active products whose recipe uses this ingredient. */
     public function namesUsingIngredient(string $itemId): array
     {
         return Product::query()
             ->where('archived', false)
-            ->where('item_id', $itemId)
+            ->whereHas('ingredients', fn ($q) => $q->where('item_id', $itemId))
             ->orderBy('name')
             ->pluck('name')
             ->all();
     }
 
-    public function create(array $data): Product
+    /** @param array<int, array{item_id: string, qty: mixed}> $recipe */
+    public function create(array $data, array $recipe): Product
     {
-        return Product::create($data)->fresh('ingredient');
+        $product = Product::create($data);
+        $product->ingredients()->createMany($recipe);
+
+        return $product->fresh('ingredients.item');
     }
 
-    public function update(Product $product, array $data): Product
+    /** $recipe = null leaves the recipe alone; an array (even empty) replaces it. */
+    public function update(Product $product, array $data, ?array $recipe = null): Product
     {
-        $product->update($data);
+        if ($data) {
+            $product->update($data);
+        }
 
-        return $product->fresh('ingredient');
+        if ($recipe !== null) {
+            $product->ingredients()->delete();
+            $product->ingredients()->createMany($recipe);
+        }
+
+        return $product->fresh('ingredients.item');
     }
 
     public function archive(Product $product): void

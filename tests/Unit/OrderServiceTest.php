@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductIngredient;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\CustomerRepository;
 use App\Repositories\OrderRepository;
@@ -51,11 +52,15 @@ class OrderServiceTest extends TestCase
         })->byDefault();
     }
 
-    private function drink(string $id, string $name, float $price, ?string $itemId = null, float $qty = 0): Product
+    /** @param array<int, array{0: string, 1: float}> $recipe  [ingredient id, amount per serving] */
+    private function drink(string $id, string $name, float $price, array $recipe = []): Product
     {
-        return (new Product)->forceFill([
-            'id' => $id, 'name' => $name, 'size' => 'M', 'price' => $price, 'item_id' => $itemId, 'qty' => $qty,
-        ]);
+        $p = (new Product)->forceFill(['id' => $id, 'name' => $name, 'size' => 'M', 'price' => $price]);
+        $p->setRelation('ingredients', collect($recipe)->map(
+            fn ($r) => (new ProductIngredient)->forceFill(['item_id' => $r[0], 'qty' => $r[1]])
+        ));
+
+        return $p;
     }
 
     private function menu(Product ...$drinks): void
@@ -63,10 +68,14 @@ class OrderServiceTest extends TestCase
         $this->products->shouldReceive('activeByIds')->andReturn(collect($drinks)->keyBy('id'));
     }
 
-    private function stockOf(string $id, string $name, float $qty): void
+    /** @param array<string, array{0: string, 1: float}> $levels  id => [name, quantity in stock] */
+    private function stockOf(array $levels): void
     {
-        $item = (new Item)->forceFill(['id' => $id, 'item' => $name, 'qty' => $qty, 'unit' => 'L']);
-        $this->stock->shouldReceive('lockForUpdate')->andReturn(collect([$id => $item]));
+        $items = collect($levels)->map(fn ($l, $id) => (new Item)->forceFill([
+            'id' => $id, 'item' => $l[0], 'qty' => $l[1], 'unit' => 'pcs',
+        ]));
+
+        $this->stock->shouldReceive('lockForUpdate')->andReturn($items);
     }
 
     public function test_total_and_change_are_calculated_on_the_server(): void
@@ -99,7 +108,7 @@ class OrderServiceTest extends TestCase
         $this->service->place(['items' => [['product_id' => 'p1', 'qty' => 2]], 'tendered' => 89.99], 'user-1');
     }
 
-    public function test_the_same_drink_listed_twice_becomes_one_line(): void
+    public function test_the_same_product_listed_twice_becomes_one_line(): void
     {
         $this->menu($this->drink('p1', 'Milk Tea', 45));
 
@@ -113,7 +122,7 @@ class OrderServiceTest extends TestCase
         $this->assertSame('135.00', $this->saved['order']['total']);
     }
 
-    public function test_a_drink_that_is_not_on_the_menu_is_rejected(): void
+    public function test_a_product_that_is_not_on_the_menu_is_rejected(): void
     {
         $this->menu($this->drink('p1', 'Milk Tea', 45));
         $this->orders->shouldReceive('create')->never();
@@ -123,14 +132,53 @@ class OrderServiceTest extends TestCase
         $this->service->place(['items' => [['product_id' => 'gone', 'qty' => 1]], 'tendered' => 100], 'user-1');
     }
 
-    public function test_stock_is_deducted_once_for_all_drinks_that_share_an_ingredient(): void
+    public function test_one_burger_uses_one_bread_and_one_patty(): void
     {
-        // 3 x 0.2 L + 2 x 0.3 L = 1.2 L of milk
+        $this->menu($this->drink('p1', 'Burger', 60, [['i-bread', 1.0], ['i-patty', 1.0]]));
+        $this->stockOf(['i-bread' => ['Bread', 10.0], 'i-patty' => ['Patty', 10.0]]);
+        $this->stock->shouldReceive('deduct')->once()->with('i-bread', '1.000');
+        $this->stock->shouldReceive('deduct')->once()->with('i-patty', '1.000');
+
+        $this->service->place(['items' => [['product_id' => 'p1', 'qty' => 1]], 'tendered' => 100], 'user-1');
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_three_burgers_use_three_of_each_ingredient(): void
+    {
+        $this->menu($this->drink('p1', 'Burger', 60, [['i-bread', 1.0], ['i-patty', 1.0]]));
+        $this->stockOf(['i-bread' => ['Bread', 10.0], 'i-patty' => ['Patty', 10.0]]);
+        $this->stock->shouldReceive('deduct')->once()->with('i-bread', '3.000');
+        $this->stock->shouldReceive('deduct')->once()->with('i-patty', '3.000');
+
+        $this->service->place(['items' => [['product_id' => 'p1', 'qty' => 3]], 'tendered' => 500], 'user-1');
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_one_missing_ingredient_stops_the_whole_sale(): void
+    {
+        $this->menu($this->drink('p1', 'Burger', 60, [['i-bread', 1.0], ['i-patty', 1.0]]));
+        $this->stockOf(['i-bread' => ['Bread', 10.0], 'i-patty' => ['Patty', 0.0]]); // plenty of bread, no patty
+        $this->stock->shouldReceive('deduct')->never();
+        $this->orders->shouldReceive('create')->never();
+
+        try {
+            $this->service->place(['items' => [['product_id' => 'p1', 'qty' => 1]], 'tendered' => 100], 'user-1');
+            $this->fail('Expected a ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('Not enough Patty', $e->errors()['items'][0]);
+        }
+    }
+
+    public function test_stock_is_deducted_once_for_all_products_that_share_an_ingredient(): void
+    {
+        // 3 x 0.2 + 2 x 0.3 = 1.2 of the same ingredient
         $this->menu(
-            $this->drink('p1', 'Milk Tea', 45, 'i-1', 0.2),
-            $this->drink('p2', 'Latte', 60, 'i-1', 0.3),
+            $this->drink('p1', 'Milk Tea', 45, [['i-1', 0.2]]),
+            $this->drink('p2', 'Latte', 60, [['i-1', 0.3]]),
         );
-        $this->stockOf('i-1', 'Milk', 10);
+        $this->stockOf(['i-1' => ['Milk', 10.0]]);
         $this->stock->shouldReceive('deduct')->once()->with('i-1', '1.200');
 
         $this->service->place([
@@ -141,29 +189,14 @@ class OrderServiceTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function test_not_enough_stock_stops_the_whole_sale(): void
-    {
-        $this->menu($this->drink('p1', 'Milk Tea', 45, 'i-1', 0.6));
-        $this->stockOf('i-1', 'Milk', 1.0); // 2 cups need 1.2 L
-        $this->stock->shouldReceive('deduct')->never();
-        $this->orders->shouldReceive('create')->never();
-
-        try {
-            $this->service->place(['items' => [['product_id' => 'p1', 'qty' => 2]], 'tendered' => 100], 'user-1');
-            $this->fail('Expected a ValidationException');
-        } catch (ValidationException $e) {
-            $this->assertStringContainsString('Not enough Milk', $e->errors()['items'][0]);
-        }
-    }
-
     public function test_voiding_a_cart_uses_no_stock_and_is_logged(): void
     {
-        $this->menu($this->drink('p1', 'Milk Tea', 45, 'i-1', 0.2));
+        $this->menu($this->drink('p1', 'Burger', 45, [['i-bread', 1.0], ['i-patty', 1.0]]));
         $this->stock->shouldReceive('lockForUpdate')->never();
         $this->stock->shouldReceive('deduct')->never();
         $this->audit->shouldReceive('record')->once()->with('void order', 'Order #7 total 90.00', 'user-1');
 
-        [$order] = $this->service->void(['items' => [['product_id' => 'p1', 'qty' => 2]]], 'user-1');
+        $this->service->void(['items' => [['product_id' => 'p1', 'qty' => 2]]], 'user-1');
 
         $this->assertSame('void', $this->saved['order']['status']);
         $this->assertArrayNotHasKey('tendered', $this->saved['order']);

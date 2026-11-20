@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Item;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as BaseCollection;
 
 class IngredientRepository
 {
@@ -12,10 +13,22 @@ class IngredientRepository
         return Item::query()->where('archived', false)->orderBy('item')->get();
     }
 
-    /** Active ingredient or null (used to validate a drink's ingredient). */
+    /** Active ingredient or null. */
     public function find(string $id): ?Item
     {
         return Item::query()->where('archived', false)->find($id);
+    }
+
+    /** The active ingredients among the given ids (used to validate a recipe). */
+        /** The active ingredients among the given ids (used to validate a recipe). */
+    public function activeByIds(array $ids): BaseCollection
+    {
+        return Item::query()
+            ->where('archived', false)
+            ->whereIn('id', $ids)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
     }
 
     /** Locks the row until the transaction ends, so two edits cannot overwrite each other. */
