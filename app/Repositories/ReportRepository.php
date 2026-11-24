@@ -6,11 +6,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\LazyCollection;
 
-/**
- * All report maths happens inside Postgres, so a busy month is never loaded into memory
- * (and never hits the API's 1,000-row limit like the old browser-side reports did).
- * Ranges are half-open: $start <= created_at < $end.
- */
+
 class ReportRepository
 {
     /** @return array{orders: int, sales: string, voided: int} */
@@ -77,7 +73,7 @@ class ReportRepository
         ], $rows);
     }
 
-    /** One row per sold line, streamed from the database (for the CSV export). */
+    
     public function exportLines(CarbonInterface $start, CarbonInterface $end): LazyCollection
     {
         return DB::table('order_items as oi')

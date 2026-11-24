@@ -10,13 +10,13 @@ class IngredientController extends Controller
 {
     public function __construct(private IngredientService $service) {}
 
-    /** GET /api/v1/ingredients */
+    
     public function index(): JsonResponse
     {
         return response()->json(['data' => $this->service->list()]);
     }
 
-    /** POST /api/v1/ingredients */
+    
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -28,7 +28,7 @@ class IngredientController extends Controller
         return response()->json(['data' => $this->service->create($data)], 201);
     }
 
-    /** PUT /api/v1/ingredients/{id}  (rename, change unit, or set a new quantity) */
+   
     public function update(Request $request, string $id): JsonResponse
     {
         $data = $request->validate([
@@ -40,7 +40,7 @@ class IngredientController extends Controller
         return response()->json(['data' => $this->service->update($id, $data, $this->userId($request))]);
     }
 
-    /** DELETE /api/v1/ingredients/{id}  (archives; blocked while a drink uses it) */
+    
     public function destroy(Request $request, string $id): JsonResponse
     {
         $this->service->archive($id, $this->userId($request));

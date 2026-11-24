@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AuditLog extends Model
 {
-    public $timestamps = false; // created_at is filled by the database
+    public $timestamps = false; 
 
     protected $table = 'audit_log';
 

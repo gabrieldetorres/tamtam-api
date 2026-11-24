@@ -10,16 +10,13 @@ class ProductController extends Controller
 {
     public function __construct(private ProductService $service) {}
 
-    /** GET /api/v1/products  (each product includes its recipe in "ingredients") */
+    
     public function index(): JsonResponse
     {
         return response()->json(['data' => $this->service->list()]);
     }
 
-    /**
-     * POST /api/v1/products
-     * Body: { name, size?, price, ingredients?: [{item_id, qty}] }
-     */
+    
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -34,10 +31,7 @@ class ProductController extends Controller
         return response()->json(['data' => $this->service->create($data)], 201);
     }
 
-    /**
-     * PUT /api/v1/products/{id}  (send only the fields you want to change)
-     * "ingredients" replaces the whole recipe; an empty list removes all ingredients.
-     */
+  
     public function update(Request $request, string $id): JsonResponse
     {
         $data = $request->validate([
@@ -52,7 +46,7 @@ class ProductController extends Controller
         return response()->json(['data' => $this->service->update($id, $data, $this->userId($request))]);
     }
 
-    /** DELETE /api/v1/products/{id}  (archives; past orders keep their details) */
+    
     public function destroy(Request $request, string $id): JsonResponse
     {
         $this->service->archive($id, $this->userId($request));

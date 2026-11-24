@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** One line of a recipe: one serving of a product uses `qty` of an ingredient (table: menu_ingredients). */
+
 class ProductIngredient extends Model
 {
     use HasUuids;

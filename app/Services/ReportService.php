@@ -8,7 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Validation\ValidationException;
 
-/** Sales reports for a range of days, in the stall's timezone (default Asia/Manila). */
+
 class ReportService
 {
     public const CSV_HEADER = ['date', 'order_no', 'item', 'size', 'qty', 'price', 'line_total'];
@@ -18,7 +18,7 @@ class ReportService
 
     public function __construct(private ReportRepository $reports) {}
 
-    /** $from / $to are "YYYY-MM-DD", both inclusive. Missing dates default to today. */
+    
     public function summary(?string $from, ?string $to): array
     {
         [$fromDay, $toDay, $start, $end, $tz] = $this->window($from, $to);
@@ -74,7 +74,7 @@ class ReportService
         }, $this->reports->topSellers($start, $end, self::TOP_SELLERS));
     }
 
-    /** One entry per day in the range; days without sales are filled in as zero. */
+    
     private function daily($fromDay, $toDay, $start, $end, string $tz): array
     {
         $found = [];
@@ -95,10 +95,7 @@ class ReportService
         return $days;
     }
 
-    /**
-     * Turns "2026-11-16".."2026-11-16" into the exact moments [start, end) of those
-     * local days, e.g. 00:00 +08:00 on the 16th up to 00:00 +08:00 on the 17th.
-     */
+    
     private function window(?string $from, ?string $to): array
     {
         $tz = (string) config('tamtam.report_timezone', 'Asia/Manila');
@@ -118,10 +115,6 @@ class ReportService
         return [$fromDay, $toDay, $fromDay, $toDay->addDay(), $tz];
     }
 
-    /**
-     * Item names are typed by a person. A name starting with = + - or @ would run as a
-     * formula when the CSV is opened in Excel, so it is made harmless with a leading '.
-     */
     private function safeText(?string $value): string
     {
         $value = (string) $value;

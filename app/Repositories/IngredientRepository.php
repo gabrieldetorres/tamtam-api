@@ -19,8 +19,7 @@ class IngredientRepository
         return Item::query()->where('archived', false)->find($id);
     }
 
-    /** The active ingredients among the given ids (used to validate a recipe). */
-        /** The active ingredients among the given ids (used to validate a recipe). */
+    
     public function activeByIds(array $ids): BaseCollection
     {
         return Item::query()
@@ -31,7 +30,7 @@ class IngredientRepository
             ->get();
     }
 
-    /** Locks the row until the transaction ends, so two edits cannot overwrite each other. */
+    
     public function findActiveForUpdate(string $id): Item
     {
         return Item::query()->where('archived', false)->lockForUpdate()->findOrFail($id);

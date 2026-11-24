@@ -13,14 +13,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/**
- * The heart of the POS. The browser only says WHICH products and HOW MANY;
- * prices, totals, change and stock are all decided here, in one transaction:
- * either the whole sale is saved (order + items + stock), or nothing is.
- *
- * Stock: every ingredient in a product's recipe is used once per serving sold
- * (1 burger = 1 bread + 1 patty).
- */
+
 class OrderService
 {
     private const MAX_TOTAL_CENTS = 9_999_999_999; // 99,999,999.99 (column limit)
@@ -95,6 +88,13 @@ class OrderService
             if (! $product) {
                 throw ValidationException::withMessages([
                     'items' => 'A product on this order is no longer on the menu. Refresh the menu and try again.',
+                ]);
+            }
+
+            // A product without a recipe would be sold without using any stock, so it cannot be sold.
+            if ($status === 'paid' && $product->ingredients->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => $product->name.' has no recipe yet. Set its recipe in Menu first.',
                 ]);
             }
 
