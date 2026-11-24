@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** A product on the menu (table: menu). Its recipe is in `ingredients`. */
+
 class Product extends Model
 {
     use HasUuids;
@@ -17,7 +17,7 @@ class Product extends Model
 
     protected $fillable = ['name', 'size', 'price', 'archived'];
 
-    // old single-ingredient columns (kept in the table for a safe rollback, no longer used)
+    
     protected $hidden = ['item_id', 'qty'];
 
     protected function casts(): array

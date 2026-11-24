@@ -11,7 +11,7 @@ class Order extends Model
 {
     use HasUuids;
 
-    public $timestamps = false; // created_at is filled by the database
+    public $timestamps = false; 
 
     protected $table = 'orders';
 

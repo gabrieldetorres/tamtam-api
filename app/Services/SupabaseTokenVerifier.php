@@ -8,15 +8,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-/**
- * Business layer: checks that a Supabase access token is real, not expired,
- * and issued by OUR Supabase project.
- *
- *  - ES256 / RS256 tokens (asymmetric signing keys): verified locally against
- *    the project's public keys (JWKS), cached for 10 minutes.
- *  - HS256 tokens (legacy shared secret): verified by asking Supabase Auth.
- *  - Any other algorithm is rejected.
- */
+
 class SupabaseTokenVerifier
 {
     /** @return array{sub: string, email: ?string} */
@@ -33,12 +25,12 @@ class SupabaseTokenVerifier
 
     private function verifyLocally(string $token): array
     {
-        JWT::$leeway = 30; // tolerate small clock differences (seconds)
+        JWT::$leeway = 30; 
 
         try {
             $claims = (array) JWT::decode($token, JWK::parseKeySet($this->jwks()));
         } catch (\Throwable $e) {
-            // Keys may have been rotated: fetch fresh keys and try once more.
+            
             Cache::forget('supabase_jwks');
             $claims = (array) JWT::decode($token, JWK::parseKeySet($this->jwks()));
         }
