@@ -24,24 +24,19 @@ class ProductService
         return $this->products->allActive();
     }
 
-        public function create(array $data): Product
+    public function create(array $data): Product
     {
-        return DB::transaction(function () use ($data) {
-            $recipe = $this->checkRecipe($data['ingredients'] ?? []);
-            unset($data['ingredients']);
+        $recipe = $this->checkRecipe($data['ingredients'] ?? []);
+        unset($data['ingredients']);
 
-            $data['size'] ??= '';
-            $data = $this->clean($data);
-            $this->assertNameSizeFree($data['name'], $data['size']);
+        $data['size'] ??= '';
+        $data = $this->clean($data);
+        $this->assertNameSizeFree($data['name'], $data['size']);
 
-            return $this->products->create($data, $recipe);
-        });
+        return DB::transaction(fn () => $this->products->create($data, $recipe));
     }
 
-    /**
-     * Send only what changes. If "ingredients" is present it REPLACES the whole recipe
-     * (an empty list = no ingredients).
-     */
+    
     public function update(string $id, array $data, string $userId): Product
     {
         return DB::transaction(function () use ($id, $data, $userId) {
@@ -63,12 +58,12 @@ class ProductService
 
             $updated = $this->products->update($product, $data, $recipe);
 
-            // Replaces the old log_price() database trigger.
+            
             if (array_key_exists('price', $data) && $updated->price !== $oldPrice) {
                 $this->audit->record('price change', $label.': '.$oldPrice.' to '.$updated->price, $userId);
             }
 
-            // A recipe decides how much stock every sale uses, so changes are logged too.
+            
             if ($recipe !== null) {
                 $newRecipe = $this->recipeText($updated);
 

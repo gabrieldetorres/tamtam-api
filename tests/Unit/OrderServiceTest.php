@@ -50,11 +50,26 @@ class OrderServiceTest extends TestCase
 
             return (new Order)->forceFill($order + ['order_no' => 7]);
         })->byDefault();
+
+        // by default every ingredient is plentiful; tests that care about stock override this
+        $this->stock->shouldReceive('lockForUpdate')->andReturnUsing(
+            fn (array $ids) => collect($ids)->mapWithKeys(fn ($id) => [
+                $id => (new Item)->forceFill(['id' => $id, 'item' => 'Stock', 'qty' => 1000, 'unit' => 'pcs']),
+            ])
+        )->byDefault();
+        $this->stock->shouldReceive('deduct')->byDefault();
     }
 
-    /** @param array<int, array{0: string, 1: float}> $recipe  [ingredient id, amount per serving] */
-    private function drink(string $id, string $name, float $price, array $recipe = []): Product
+    /**
+     * By default a product has a simple one-ingredient recipe (every product needs one to be sold).
+     * Pass [] for a product with no recipe.
+     *
+     * @param array<int, array{0: string, 1: float}>|null $recipe  [ingredient id, amount per serving]
+     */
+    private function drink(string $id, string $name, float $price, ?array $recipe = null): Product
     {
+        $recipe ??= [['i-default', 1.0]];
+
         $p = (new Product)->forceFill(['id' => $id, 'name' => $name, 'size' => 'M', 'price' => $price]);
         $p->setRelation('ingredients', collect($recipe)->map(
             fn ($r) => (new ProductIngredient)->forceFill(['item_id' => $r[0], 'qty' => $r[1]])
@@ -217,6 +232,30 @@ class OrderServiceTest extends TestCase
 
         $this->assertFalse($created);
         $this->assertSame(3, $order->order_no);
+    }
+
+    public function test_a_product_without_a_recipe_cannot_be_sold(): void
+    {
+        $this->menu($this->drink('p1', 'New Burger', 60, []));
+        $this->orders->shouldReceive('create')->never();
+        $this->stock->shouldReceive('deduct')->never();
+
+        try {
+            $this->service->place(['items' => [['product_id' => 'p1', 'qty' => 1]], 'tendered' => 100], 'user-1');
+            $this->fail('Expected a ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('New Burger has no recipe yet', $e->errors()['items'][0]);
+        }
+    }
+
+    public function test_a_cart_with_a_product_that_has_no_recipe_can_still_be_voided(): void
+    {
+        $this->menu($this->drink('p1', 'New Burger', 60, []));
+        $this->audit->shouldReceive('record')->once();
+
+        $this->service->void(['items' => [['product_id' => 'p1', 'qty' => 1]]], 'user-1');
+
+        $this->assertSame('void', $this->saved['order']['status']);
     }
 
     public function test_an_archived_customer_is_rejected(): void

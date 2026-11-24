@@ -10,13 +10,13 @@ use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
-// {id} must look like a UUID, otherwise Postgres would throw an error (500) instead of a clean 404.
+
 Route::pattern('id', '[0-9a-fA-F-]{36}');
 
-// Laravel adds the /api prefix automatically, so these are /api/v1/...
+
 Route::prefix('v1')->group(function () {
 
-    // Public check: is the API up, which environment, can it reach the database?
+    
     Route::get('/health', function () {
         try {
             DB::select('select 1');
@@ -32,7 +32,7 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
-    // Everything below requires a valid Supabase login token.
+    
     Route::middleware('supabase.auth')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
 

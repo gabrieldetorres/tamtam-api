@@ -13,13 +13,13 @@ class ProductRepository
         return Product::with('ingredients.item')->where('archived', false)->orderBy('name')->get();
     }
 
-    /** Throws ModelNotFoundException (-> 404) if missing or archived. */
+  
     public function findActive(string $id): Product
     {
         return Product::with('ingredients.item')->where('archived', false)->findOrFail($id);
     }
 
-    /** Active products for the given ids, keyed by id, with their recipes (used when placing an order). */
+    
     public function activeByIds(array $ids): BaseCollection
     {
         return Product::query()
@@ -40,7 +40,7 @@ class ProductRepository
             ->exists();
     }
 
-    /** Names of active products whose recipe uses this ingredient. */
+   
     public function namesUsingIngredient(string $itemId): array
     {
         return Product::query()
@@ -60,7 +60,7 @@ class ProductRepository
         return $product->fresh('ingredients.item');
     }
 
-    /** $recipe = null leaves the recipe alone; an array (even empty) replaces it. */
+   
     public function update(Product $product, array $data, ?array $recipe = null): Product
     {
         if ($data) {

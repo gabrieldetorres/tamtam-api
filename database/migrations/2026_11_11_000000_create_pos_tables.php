@@ -5,18 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-/*
- * TamTam POS tables (translated from schema.sql).
- * Differences from the old schema:
- *  - No triggers: audit logging and stock deduction move into Laravel Services,
- *    inside one database transaction per order.
- *  - items.archived added (archive ingredients instead of deleting them).
- *  - menu.item_id uses RESTRICT, so an ingredient in use cannot be deleted.
- *  - audit_log.user_id added (who did it).
- *  - Indexes, CHECK constraints, and a unique active (name, size) per product.
- *  - RLS enabled with NO policies: the Supabase publishable key cannot touch these
- *    tables. Laravel connects as the database owner, which bypasses RLS.
- */
+
 return new class extends Migration
 {
     private array $tables = [

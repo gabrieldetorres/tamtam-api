@@ -5,15 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-/*
- * Recipes: one product can use MANY ingredients (a burger = 1 bread + 1 patty).
- *
- * Each row says "one serving of this product uses this much of this ingredient".
- * Existing one-ingredient links are copied over, so nothing is lost.
- *
- * The old columns menu.item_id and menu.qty are deliberately KEPT (the app no longer reads them).
- * Dropping them can wait for a later release, so this release can still be rolled back safely.
- */
+
 return new class extends Migration
 {
     public function up(): void

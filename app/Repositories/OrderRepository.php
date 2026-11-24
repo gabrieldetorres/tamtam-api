@@ -14,7 +14,7 @@ class OrderRepository
         $created = Order::create($order);
         $created->items()->createMany($items);
 
-        // fresh() reloads the row so order_no (made by the database) is included
+       
         return $created->fresh(['items', 'customer']);
     }
 
@@ -38,7 +38,7 @@ class OrderRepository
             ->get();
     }
 
-    /** Paid orders only: count, total spend, date of the last one. */
+    
     public function customerStats(string $customerId): array
     {
         $row = Order::query()

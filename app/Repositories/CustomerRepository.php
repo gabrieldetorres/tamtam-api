@@ -12,7 +12,6 @@ class CustomerRepository
         $query = Customer::query()->where('archived', false);
 
         if ($term !== null && $term !== '') {
-            // escape LIKE wildcards so "%" or "_" typed by the user are plain characters
             $like = '%'.addcslashes($term, '%_\\').'%';
             $query->where(fn ($q) => $q->where('name', 'ilike', $like)->orWhere('contact', 'ilike', $like));
         }
