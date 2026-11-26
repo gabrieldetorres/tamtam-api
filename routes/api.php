@@ -59,6 +59,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/reports/summary', [ReportController::class, 'summary']);
         Route::get('/reports/export', [ReportController::class, 'export']);
+        Route::post('/reports/google-sheets', [ReportController::class, 'exportToGoogleSheets']);
 
         Route::get('/audit-log', [AuditLogController::class, 'index']);
     });
