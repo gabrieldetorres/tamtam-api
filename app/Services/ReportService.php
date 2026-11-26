@@ -40,6 +40,37 @@ class ReportService
         ];
     }
 
+    
+    public function monthlyReport(): array
+    {
+        $tz = (string) config('tamtam.report_timezone', 'Asia/Manila');
+
+        $now = CarbonImmutable::now($tz);
+
+        if (! $now->isLastOfMonth()) {
+            throw ValidationException::withMessages([
+                'report' => 'The monthly report is only available on the last day of the month.',
+            ]);
+        }
+
+        $fromDay = $now->startOfMonth();
+        $toDay = $now->startOfDay();
+
+        $from = $fromDay->toDateString();
+        $to = $toDay->toDateString();
+
+        // Kunin ang summary at detailed sales records
+        $summary = $this->summary($from, $to);
+        $export = $this->export($from, $to);
+
+        return [
+            'summary' => $summary,
+            'filename' => 'TAMTAM_'.$fromDay->format('F_Y').'_Report.pdf',
+            'records' => $export['rows']->all(),
+        ];
+    }
+
+
     /** @return array{filename: string, rows: LazyCollection} */
     public function export(?string $from, ?string $to): array
     {

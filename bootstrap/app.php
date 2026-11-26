@@ -15,7 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
 )
    ->withMiddleware(function (Middleware $middleware): void {
     $middleware->alias([
-        'supabase.auth' => \App\Http\Middleware\VerifySupabaseToken::class,
+    'supabase.auth' => \App\Http\Middleware\VerifySupabaseToken::class,
+    'power.automate' => \App\Http\Middleware\VerifyPowerAutomateKey::class,
     ]);
 })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -6,6 +6,7 @@ use App\Services\ReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
 {
@@ -37,6 +38,18 @@ class ReportController extends Controller
 
             fclose($out);
         }, $export['filename'], ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function monthlyPdf()
+    {
+        $report = $this->service->monthlyReport();
+
+        $pdf = Pdf::loadView('reports.monthly', [
+            'summary' => $report['summary'],
+            'records' => $report['records'],
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download($report['filename']);
     }
 
     private function range(Request $request): array

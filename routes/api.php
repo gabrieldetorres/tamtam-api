@@ -62,4 +62,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/audit-log', [AuditLogController::class, 'index']);
     });
+
+        Route::get('/reports/monthly-pdf', [ReportController::class, 'monthlyPdf'])
+        ->middleware('power.automate');
 });
