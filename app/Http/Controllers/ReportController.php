@@ -52,12 +52,21 @@ class ReportController extends Controller
         }
 
         $export = $this->service->export($from, $to);
+        $summary = $this->service->summary($from, $to);
 
         $values = [ReportService::CSV_HEADER];
+        $totalQty = 0;
 
         foreach ($export['rows'] as $row) {
             $values[] = $row;
+            $totalQty += (int) $row[4];
         }
+
+        $values[] = ['', '', '', '', '', '', ''];
+        $values[] = ['SUMMARY', 'VALUE'];
+        $values[] = ['Total Sales', $summary['sales']];
+        $values[] = ['Total Orders', $summary['orders']];
+        $values[] = ['Total Quantity Sold', $totalQty];
 
         $result = $googleSheets->export($from, $to, $values);
 
