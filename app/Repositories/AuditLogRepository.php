@@ -16,4 +16,15 @@ class AuditLogRepository
     {
         return AuditLog::query()->orderByDesc('created_at')->orderByDesc('id')->limit($limit)->get();
     }
+
+    public function lastTimestampForKind(string $kind): ?\Carbon\CarbonImmutable
+    {
+        $createdAt = AuditLog::query()
+            ->where('kind', $kind)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->value('created_at');
+
+        return $createdAt ? \Carbon\CarbonImmutable::parse($createdAt) : null;
+    }
 }
