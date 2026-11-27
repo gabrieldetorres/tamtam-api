@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\ReportService;
+use App\Services\GoogleSheetsService;
 use App\Services\SalesReportEmailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,46 @@ class ReportController extends Controller
             fclose($out);
         }, $export['filename'], ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
+
+
+    public function exportToGoogleSheets(Request $request, GoogleSheetsService $googleSheets): JsonResponse
+    { 
+        [$from, $to] = $this->range($request);
+
+        if (!$from || !$to) {
+            return response()->json([
+                'message' => 'Both start and end dates are required.'
+            ], 422);
+        }
+
+        $export = $this->service->export($from, $to);
+        $summary = $this->service->summary($from, $to);
+
+        $values = [ReportService::CSV_HEADER];
+        $totalQty = 0;
+
+        foreach ($export['rows'] as $row) {
+            $values[] = $row;
+            $totalQty += (int) $row[4];
+        }
+
+        $values[] = ['', '', '', '', '', '', ''];
+        $values[] = ['SUMMARY', 'VALUE'];
+        $values[] = ['Total Sales', $summary['sales']];
+        $values[] = ['Total Orders', $summary['orders']];
+        $values[] = ['Total Quantity Sold', $totalQty];
+
+        $result = $googleSheets->export($from, $to, $values);
+
+        return response()->json([
+            'data' => [
+                'message' => 'Sales report exported successfully.',
+                'sheet_name' => $result['sheet_name'],
+                'spreadsheet_url' => $result['spreadsheet_url'],
+            ],
+        ]);
+    }
+
 
     private function range(Request $request): array
     {
