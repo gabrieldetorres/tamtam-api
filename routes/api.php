@@ -32,6 +32,8 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
+    Route::post('/cron/sales-report', [ReportController::class, 'runScheduled']);
+
     
     Route::middleware('supabase.auth')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);

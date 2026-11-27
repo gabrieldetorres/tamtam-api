@@ -65,6 +65,38 @@ class ReportService
         ];
     }
 
+    /**
+     * Write the UTF-8 BOM, CSV header, and sales rows to an open stream.
+     *
+     * @param  resource  $stream
+     * @param  iterable<int, array<int, string|int|float>>  $rows
+     */
+    public function writeCsv($stream, iterable $rows): void
+    {
+        fwrite($stream, "\xEF\xBB\xBF");
+        fputcsv($stream, self::CSV_HEADER, ',', '"', '');
+
+        foreach ($rows as $row) {
+            fputcsv($stream, $row, ',', '"', '');
+        }
+    }
+
+    /**
+     * Render sales export rows into a complete CSV string.
+     *
+     * @param  iterable<int, array<int, string|int|float>>  $rows
+     */
+    public function toCsvString(iterable $rows): string
+    {
+        $stream = fopen('php://temp', 'r+');
+        $this->writeCsv($stream, $rows);
+        rewind($stream);
+        $csv = (string) stream_get_contents($stream);
+        fclose($stream);
+
+        return $csv;
+    }
+
     private function topSellers(Carbon|CarbonImmutable $start, Carbon|CarbonImmutable $end): array
     {
         return array_map(function ($row) {
