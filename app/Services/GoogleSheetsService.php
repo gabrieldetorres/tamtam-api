@@ -9,6 +9,7 @@ use Google\Service\Sheets\ClearValuesRequest;
 use Google\Service\Sheets\ValueRange;
 use RuntimeException;
 
+
 class GoogleSheetsService
 {
     private Sheets $sheets;
@@ -35,27 +36,27 @@ class GoogleSheetsService
         $this->sheets = new Sheets($client);
     }
 
-    public function export(
-        string $from,
-        string $to,
-        array $values
-    ): array {
-        $spreadsheetId = config(
-            'services.google_sheets.spreadsheet_id'
+    public function export(string $from,string $to,array $values): 
+    array {
+        
+    $spreadsheetId = config(
+        'services.google_sheets.spreadsheet_id'
+    );
+
+    $baseName = config(
+        'services.google_sheets.sheet_name',
+        'Sales Reports'
+    );
+
+    if (!$spreadsheetId) {
+        throw new RuntimeException(
+            'Google Spreadsheet ID is not configured.'
         );
+    }
 
-        $baseName = config(
-            'services.google_sheets.sheet_name',
-            'Sales Reports'
-        );
+    $sheetTitle = "{$baseName} {$from} to {$to}";
 
-        if (!$spreadsheetId) {
-            throw new RuntimeException(
-                'Google Spreadsheet ID is not configured.'
-            );
-        }
-
-        $sheetTitle = "{$baseName} {$from} to {$to}";
+        
 
         $spreadsheet = $this->sheets->spreadsheets->get(
             $spreadsheetId
