@@ -16,3 +16,6 @@
 .phpunit.result.cache
 
 /storage/*.key
+
+# Google Sheets Service Account credentials
+/storage/app/private/google/
