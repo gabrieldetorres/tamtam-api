@@ -17,6 +17,7 @@ return [
             ))
         ))),
         'interval_days' => (int) env('SALES_REPORT_INTERVAL_DAYS', 30),
+        'interval_minutes' => (int) env('SALES_REPORT_INTERVAL_MINUTES', 0), //For testing
         'send_time' => env('SALES_REPORT_SEND_TIME', '08:00'),
         'currency' => env('SALES_REPORT_CURRENCY', 'PHP'),
         'cron_secret' => env('SALES_REPORT_CRON_SECRET'),

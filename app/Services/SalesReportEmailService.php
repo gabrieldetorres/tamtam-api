@@ -31,20 +31,31 @@ class SalesReportEmailService
     }
 
     public function isDue(int $intervalDays = 30): bool
-    {
-        $intervalDays = max(1, $intervalDays);
-        $lastSent = $this->audit->lastTimestampForKind(self::AUDIT_KIND);
+{
+    $intervalMinutes = (int) config('tamtam.sales_report_email.interval_minutes', 0);
 
-        if ($lastSent === null) {
-            return true;
-        }
+    $lastSent = $this->audit->lastTimestampForKind(self::AUDIT_KIND);
 
-        $tz = (string) config('tamtam.report_timezone', 'Asia/Manila');
-        $lastDay = $lastSent->setTimezone($tz)->startOfDay();
-        $today = now($tz)->startOfDay()->toImmutable();
-
-        return $lastDay->diffInDays($today) >= $intervalDays;
+    if ($lastSent === null) {
+        return true;
     }
+
+    $tz = (string) config('tamtam.report_timezone', 'Asia/Manila');
+    $lastSent = $lastSent->setTimezone($tz);
+
+    // Use minutes for temporary testing when configured.
+    if ($intervalMinutes > 0) {
+        return $lastSent->diffInMinutes(now($tz)) >= $intervalMinutes;
+    }
+
+    // Otherwise, use the normal day-based interval.
+    $intervalDays = max(1, $intervalDays);
+    $lastDay = $lastSent->startOfDay();
+    $today = now($tz)->startOfDay()->toImmutable();
+
+    return $lastDay->diffInDays($today) >= $intervalDays;
+}
+
 
     /**
      * Generate and email the 30-day PDF sales report.
